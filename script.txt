@@ -1,0 +1,15 @@
+show
+add
+Raf
+1
+1
+1
+2007-12-03T10:15:30
+jhgkj
+UNITED_KINGDOM
+13
+14
+15
+Loc
+execute_script script1.txt
+show
