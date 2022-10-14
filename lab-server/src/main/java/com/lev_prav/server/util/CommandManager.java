@@ -2,6 +2,7 @@ package com.lev_prav.server.util;
 
 
 import com.lev_prav.common.util.CommandRequirement;
+import com.lev_prav.server.collectionmanagers.CollectionManager;
 import com.lev_prav.server.commands.AverageOfHeightCommand;
 import com.lev_prav.server.commands.ClearCommand;
 import com.lev_prav.server.commands.Command;
@@ -13,22 +14,19 @@ import com.lev_prav.server.commands.FilterLessThanNationalityCommand;
 import com.lev_prav.server.commands.GroupCountingByCreationDateCommand;
 import com.lev_prav.server.commands.HeadCommand;
 import com.lev_prav.server.commands.HelpCommand;
-import com.lev_prav.server.commands.HistoryCommand;
 import com.lev_prav.server.commands.InfoCommand;
 import com.lev_prav.server.commands.RemoveByIdCommand;
 import com.lev_prav.server.commands.RemoveLowerCommand;
-import com.lev_prav.server.commands.SaveCommand;
 import com.lev_prav.server.commands.ShowCommand;
 
 import java.util.HashMap;
+import java.util.logging.Logger;
 
 public class CommandManager {
     private final HashMap<String, Command> commands = new HashMap<>();
-    private final HistoryCommand historyCommand;
     private final HashMap<String, CommandRequirement> requirements = new HashMap<>();
-    private final SaveCommand saveCommand;
 
-    public CommandManager(CollectionManager collectionManager, String fileName) {
+    public CommandManager(CollectionManager collectionManager, Logger logger) {
         ClearCommand clearCommand = new ClearCommand(collectionManager);
         commands.put(clearCommand.getName(), clearCommand);
         CommandAdd commandAdd = new CommandAdd(collectionManager);
@@ -37,14 +35,12 @@ public class CommandManager {
         commands.put(commandUpdate.getName(), commandUpdate);
         ExecuteScriptCommand executeScriptCommand = new ExecuteScriptCommand();
         commands.put(executeScriptCommand.getName(), executeScriptCommand);
-        ExitCommand exitCommand = new ExitCommand(collectionManager);
+        ExitCommand exitCommand = new ExitCommand(logger);
         commands.put(exitCommand.getName(), exitCommand);
         HeadCommand headCommand = new HeadCommand(collectionManager);
         commands.put(headCommand.getName(), headCommand);
         HelpCommand helpCommand = new HelpCommand(commands);
         commands.put(helpCommand.getName(), helpCommand);
-        historyCommand = new HistoryCommand();
-        commands.put(historyCommand.getName(), historyCommand);
         InfoCommand infoCommand = new InfoCommand(collectionManager);
         commands.put(infoCommand.getName(), infoCommand);
         RemoveByIdCommand removeByIdCommand = new RemoveByIdCommand(collectionManager);
@@ -60,13 +56,9 @@ public class CommandManager {
         FilterLessThanNationalityCommand filterLessThanNationalityCommand = new FilterLessThanNationalityCommand(collectionManager);
         commands.put(filterLessThanNationalityCommand.getName(), filterLessThanNationalityCommand);
 
-        commands.forEach((k, v) -> requirements.put(k, v.getRequirement()));
-        saveCommand = new SaveCommand(collectionManager);
+        commands.forEach((k, v) -> requirements.put(k, new CommandRequirement(v.getObjectRequirement(), v.isCommandNeedsStringArgument())));
     }
 
-    public void addToHistory(Command command) {
-        historyCommand.add(command);
-    }
 
     public HashMap<String, Command> getCommands() {
         return commands;
@@ -76,7 +68,4 @@ public class CommandManager {
         return requirements;
     }
 
-    public SaveCommand getSaveCommand() {
-        return saveCommand;
-    }
 }

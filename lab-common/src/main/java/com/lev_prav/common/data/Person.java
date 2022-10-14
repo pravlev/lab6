@@ -32,8 +32,10 @@ public class Person implements Comparable<Person>, Serializable {
     @CsvRecurse
     private Location location; //Поле не может быть null
 
+    private String ownerUserName;
+
     public Person(String name, Coordinates coordinates, double height, LocalDateTime birthday, String passportID, Country nationality,
-                  Location location) {
+                  Location location, String ownerUserName) {
         this.name = name;
         this.coordinates = coordinates;
         this.height = height;
@@ -41,12 +43,13 @@ public class Person implements Comparable<Person>, Serializable {
         this.passportID = passportID;
         this.nationality = nationality;
         this.location = location;
+        this.ownerUserName = ownerUserName;
     }
 
     public Person() {
     }
 
-    public int getId() {
+    public Integer getId() {
         return id;
     }
 
@@ -68,6 +71,14 @@ public class Person implements Comparable<Person>, Serializable {
 
     public void setCoordinates(Coordinates coordinates) {
         this.coordinates = coordinates;
+    }
+
+    public String getOwnerUserName() {
+        return ownerUserName;
+    }
+
+    public void setOwnerUserName(String ownerUserName) {
+        this.ownerUserName = ownerUserName;
     }
 
     public ZonedDateTime getCreationDate() {

@@ -5,7 +5,7 @@ import com.opencsv.bean.CsvBindByName;
 import java.io.Serializable;
 import java.util.Objects;
 
-public class Location implements Serializable {
+public class Location implements Serializable, Comparable<Location> {
     @CsvBindByName
     private Double locationX; //Поле не может быть null
     @CsvBindByName
@@ -82,5 +82,16 @@ public class Location implements Serializable {
                 + ", z=" + locationZ
                 + ", name='" + locationName + '\''
                 + '}';
+    }
+
+    @Override
+    public int compareTo(Location o) {
+        if (!locationX.equals(o.locationX)) {
+            return locationX.compareTo(o.locationX);
+        }
+        if (!locationY.equals(o.locationY)) {
+            return locationY.compareTo(o.locationY);
+        }
+        return locationZ.compareTo(o.locationZ);
     }
 }

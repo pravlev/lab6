@@ -11,19 +11,18 @@ import com.lev_prav.client.utility.Requester;
 import com.lev_prav.client.utility.UserIO;
 import com.lev_prav.common.exceptions.IllegalAddressException;
 import com.lev_prav.common.util.Checker;
-import com.lev_prav.common.util.CommandRequirement;
 
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.net.InetSocketAddress;
 import java.nio.channels.DatagramChannel;
-import java.util.HashMap;
+import java.util.NoSuchElementException;
 import java.util.Scanner;
 
 public final class Client {
     private static final int TIMEOUT = 100;
     private static final int BUFFER_SIZE = 3048;
-    private static final int RECONNECTION_ATTEMPTS = 5;
+    private static final int RECONNECTION_ATTEMPTS = 10;
     private static final int NUMBER_OF_ARGUMENTS = 2;
 
     private Client() {
@@ -40,8 +39,7 @@ public final class Client {
                 client.bind(null).configureBlocking(false);
                 Requester requester = new Requester(client, serverAddress, TIMEOUT, BUFFER_SIZE, RECONNECTION_ATTEMPTS,
                         userIO);
-                HashMap<String, CommandRequirement> requirements = requester.sendPullingRequest();
-                ConsoleManager consoleManager = new ConsoleManager(requirements, userIO,
+                ConsoleManager consoleManager = new ConsoleManager(userIO,
                         personFiller, requester);
                 consoleManager.start();
             } catch (InvalidInputException | NoConnectionException | IllegalAddressException e) {
@@ -49,6 +47,8 @@ public final class Client {
             } catch (IOException | ClassNotFoundException | InterruptedException e) {
                 userIO.writelnColorMessage("error during connection:", Color.RED);
                 e.printStackTrace();
+            } catch (NoSuchElementException e) {
+                userIO.writelnColorMessage("\nThe work of the program has been completed due to the termination of the input.", Color.RED);
             }
         } else {
             userIO.writelnColorMessage("please enter a server hostname and port as a command "

@@ -1,10 +1,9 @@
 package com.lev_prav.server.commands;
 
-import com.lev_prav.common.exceptions.CSVException;
 import com.lev_prav.common.exceptions.IllegalValueException;
 import com.lev_prav.common.exceptions.NoSuchCommandException;
 import com.lev_prav.common.exceptions.ScriptException;
-import com.lev_prav.common.util.CommandRequirement;
+import com.lev_prav.common.util.CommandObjectRequirement;
 import com.lev_prav.common.util.ServerResponse;
 
 import java.io.FileNotFoundException;
@@ -16,12 +15,14 @@ import java.io.FileNotFoundException;
 public abstract class Command {
     private final String name;
     private final String description;
-    private CommandRequirement requirement;
+    private CommandObjectRequirement objectRequirement;
+    private final boolean commandNeedsStringArgument;
 
-    public Command(String name, String description, CommandRequirement requirement) {
+    public Command(String name, String description, CommandObjectRequirement requirement, boolean commandNeedsStringArgument) {
         this.name = name;
         this.description = description;
-        this.requirement = requirement;
+        this.objectRequirement = requirement;
+        this.commandNeedsStringArgument = commandNeedsStringArgument;
     }
 
     /**
@@ -34,7 +35,7 @@ public abstract class Command {
      * @throws IllegalValueException
      * @throws FileNotFoundException
      */
-    public abstract ServerResponse execute(String argument, Object object) throws NoSuchCommandException, IllegalValueException, FileNotFoundException, CSVException;
+    public abstract ServerResponse execute(String argument, Object object, String username) throws NoSuchCommandException, IllegalValueException;
 
     public String getName() {
         return name;
@@ -44,7 +45,12 @@ public abstract class Command {
         return description;
     }
 
-    public CommandRequirement getRequirement() {
-        return requirement;
+
+    public CommandObjectRequirement getObjectRequirement() {
+        return objectRequirement;
+    }
+
+    public boolean isCommandNeedsStringArgument() {
+        return commandNeedsStringArgument;
     }
 }

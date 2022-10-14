@@ -6,11 +6,15 @@ public class ClientRequest implements Serializable {
     private final String commandName;
     private final String commandArguments;
     private final Serializable objectArgument;
+    private final String username;
+    private final String password;
 
-    public ClientRequest(String commandName, String commandArguments, Serializable objectArgument) {
+    public ClientRequest(String commandName, String commandArguments, Serializable objectArgument, String username, String password) {
         this.commandName = commandName;
         this.commandArguments = commandArguments;
         this.objectArgument = objectArgument;
+        this.username = username;
+        this.password = password;
     }
 
     public String getCommandName() {
@@ -23,6 +27,14 @@ public class ClientRequest implements Serializable {
 
     public Serializable getObjectArgument() {
         return objectArgument;
+    }
+
+    public String getUsername() {
+        return username;
+    }
+
+    public String getPassword() {
+        return password;
     }
 
     @Override

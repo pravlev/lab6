@@ -4,8 +4,11 @@ import com.lev_prav.client.exceptions.InvalidInputException;
 import com.lev_prav.client.exceptions.NoConnectionException;
 import com.lev_prav.common.exceptions.ScriptException;
 import com.lev_prav.common.util.ClientRequest;
+import com.lev_prav.common.util.CommandObjectRequirement;
 import com.lev_prav.common.util.CommandRequirement;
 import com.lev_prav.common.util.ExecuteCode;
+import com.lev_prav.common.util.PullingResponse;
+import com.lev_prav.common.util.RegistrationCode;
 import com.lev_prav.common.util.ServerResponse;
 
 import java.io.IOException;
@@ -14,13 +17,14 @@ import java.util.HashMap;
 import java.util.Locale;
 
 public class ConsoleManager {
-    private final HashMap<String, CommandRequirement> commands;
+    private HashMap<String, CommandRequirement> commands;
     private final UserIO userIO;
     private final Requester requester;
     private final PersonFiller personFiller;
+    private String username;
+    private String password;
 
-    public ConsoleManager(HashMap<String, CommandRequirement> commands, UserIO userIO, PersonFiller personFiller, Requester requester) {
-        this.commands = commands;
+    public ConsoleManager(UserIO userIO, PersonFiller personFiller, Requester requester) {
         this.userIO = userIO;
         this.personFiller = personFiller;
         this.requester = requester;
@@ -30,6 +34,7 @@ public class ConsoleManager {
      * starts read commands and execute it while it is not an exit command
      */
     public void start() throws IOException, ClassNotFoundException, InvalidInputException, NoConnectionException, InterruptedException {
+        authorize();
         boolean executeFlag = true;
         while (executeFlag) {
             String input = userIO.readline();
@@ -40,7 +45,7 @@ public class ConsoleManager {
                     argument = input.replaceFirst(inputCommand + " ", "");
                 }
                 try {
-                    ClientRequest request = new ClientRequest(inputCommand, argument, getObjectArgument(inputCommand));
+                    ClientRequest request = new ClientRequest(inputCommand, argument, getObjectArgument(inputCommand, argument), username, password);
                     ServerResponse response = (ServerResponse) requester.send(request);
                     executeFlag = processServerResponse(response);
                 } catch (ScriptException e) {
@@ -54,13 +59,13 @@ public class ConsoleManager {
         }
     }
 
-    public Serializable getObjectArgument(String commandName) throws ScriptException, InvalidInputException {
+    public Serializable getObjectArgument(String commandName, String argument) throws ScriptException, InvalidInputException {
         Serializable object = null;
-        if (commands.containsKey(commandName)) {
-            CommandRequirement requirement = commands.get(commandName);
+        if (commands.containsKey(commandName) && commands.get(commandName).isCommandNeedsStringArgument() == !argument.isEmpty()) {
+            CommandObjectRequirement requirement = commands.get(commandName).getCommandObjectRequirement();
             switch (requirement) {
                 case PERSON:
-                    object = personFiller.fillPerson();
+                    object = personFiller.fillPerson(username);
                     break;
                 case NATIONALITY:
                     object = personFiller.fillNationality();
@@ -95,6 +100,13 @@ public class ConsoleManager {
             case READ_SCRIPT:
                 userIO.startReadScript(serverResponse.getMessage());
                 break;
+            case SERVER_ERROR:
+                userIO.writelnColorMessage(executeCode.getMessage(), Color.RED);
+                if (serverResponse.getMessage() != null) {
+                    userIO.writelnColorMessage("cause:", Color.RED);
+                    userIO.writelnColorMessage(serverResponse.getMessage(), Color.RED);
+                }
+                break;
             case EXIT:
                 userIO.writelnColorMessage(executeCode.getMessage(), Color.RED);
                 return false;
@@ -102,5 +114,25 @@ public class ConsoleManager {
                 userIO.writelnColorMessage("incorrect server's response...", Color.RED);
         }
         return true;
+    }
+
+    private void authorize() throws InvalidInputException, NoConnectionException, IOException, InterruptedException,
+            ClassNotFoundException {
+        boolean isAuthorized = false;
+        do {
+            userIO.write("enter username:");
+            String newUsername = userIO.readline().trim();
+            userIO.write("enter password:");
+            String newPassword = userIO.readline().trim();
+            PullingResponse response = requester.sendPullingRequest(newUsername, newPassword);
+            if (response.getRegistrationCode() == RegistrationCode.AUTHORIZED
+                    || response.getRegistrationCode() == RegistrationCode.REGISTERED) {
+                isAuthorized = true;
+                commands = response.getRequirements();
+                username = newUsername;
+                password = newPassword;
+            }
+            userIO.writeln(response.getRegistrationCode().getMessage());
+        } while (!isAuthorized);
     }
 }

@@ -12,6 +12,7 @@ import java.util.Stack;
 public class UserIO {
     private Scanner fin;
     private Stack<ArrayDeque<String>> fileContents;
+    private Stack<String> fileNames;
     private BufferedWriter fout;
     private boolean scriptMode;
     private boolean isEnded;
@@ -99,8 +100,12 @@ public class UserIO {
     public void startReadScript(String fileName) {
         if (fileContents == null) {
             fileContents = new Stack<>();
+            fileNames = new Stack<>();
         }
-
+        if (fileNames.stream().anyMatch(v -> v.equals(fileName))) {
+            writeln("File '" + fileName + "' has already been opened");
+            return;
+        }
         fileContents.push(new ArrayDeque<>());
         try (Scanner fileScanner = new Scanner(new File(fileName))) {
             while (fileScanner.hasNextLine()) {
@@ -111,6 +116,7 @@ public class UserIO {
             fileContents.pop();
             return;
         }
+        fileNames.push(fileName);
 
         writeln("Start reading from file " + fileName + " ...");
         scriptMode = true;
@@ -121,6 +127,7 @@ public class UserIO {
     public void finishReadScript() {
         if (!fileContents.empty()) {
             fileContents.pop();
+            fileNames.pop();
         }
         if (fileContents.empty()) {
             scriptMode = false;
@@ -129,11 +136,12 @@ public class UserIO {
     }
 
     public void finishReadAllScript() {
-        if(!scriptMode){
+        if (!scriptMode) {
             return;
         }
         if (!fileContents.empty()) {
             fileContents.clear();
+            fileNames.clear();
         }
         scriptMode = false;
     }

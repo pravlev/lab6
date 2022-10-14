@@ -1,71 +1,92 @@
 package com.lev_prav.server.util;
 
 
-import com.lev_prav.common.exceptions.CSVException;
-import com.lev_prav.common.exceptions.IllegalValueException;
-import com.lev_prav.common.exceptions.NoSuchCommandException;
 import com.lev_prav.common.util.ClientRequest;
 import com.lev_prav.common.util.ExecuteCode;
 import com.lev_prav.common.util.PullingRequest;
-import com.lev_prav.common.util.PullingResponse;
 import com.lev_prav.common.util.Serializer;
 import com.lev_prav.common.util.ServerResponse;
-import com.lev_prav.server.commands.Command;
-import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
-import java.io.Serializable;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
+import java.util.concurrent.ExecutorService;
+import java.util.logging.Logger;
 
 public class Receiver {
     private final int bufferSize;
-    private final CommandManager commandManager;
     private final DatagramSocket server;
     private final Logger logger;
+    private final Executor executor;
+    private final UsersHandler usersHandler;
 
-    public Receiver(CommandManager commandManager, DatagramSocket server, int bufferSize, Logger logger) {
-        this.commandManager = commandManager;
+    public Receiver(DatagramSocket server, int bufferSize, Logger logger, Executor executor,
+                    UsersHandler usersHandler) {
         this.server = server;
         this.bufferSize = bufferSize;
         this.logger = logger;
+        this.executor = executor;
+        this.usersHandler = usersHandler;
     }
 
-    public void receive() throws IOException, ClassNotFoundException {
-        byte[] bytesReceiving = new byte[bufferSize];
-        DatagramPacket request = new DatagramPacket(bytesReceiving, bytesReceiving.length);
-        server.receive(request);
-        Object received = Serializer.deserialize(bytesReceiving);
-        InetAddress client = request.getAddress();
-        int port = request.getPort();
-        logger.info("received request from address " + client + ", port " + port);
-        Object response;
+    public void start(ExecutorService requestReadingPool, ExecutorService requestProcessingPool,
+                      ExecutorService responseSendingPool) {
+        requestReadingPool.submit(() -> {
+            while (!server.isClosed()) {
+                ReceivedData receivedData = receive();
+                Object request = receivedData.getRequest();
+                InetAddress client = receivedData.getClient();
+                int port = receivedData.getPort();
+                requestProcessingPool.submit(() -> {
+                    Object response = processRequest(request);
+                    responseSendingPool.submit(() -> sendResponse(response, client, port));
+                });
+            }
+        });
+    }
+
+    private Object processRequest(Object received) {
         if (received instanceof PullingRequest) {
-            response = new PullingResponse(commandManager.getRequirements());
+            return usersHandler.handle((PullingRequest) received);
         } else {
             ClientRequest clientRequest = (ClientRequest) received;
-            String inputCommand = clientRequest.getCommandName();
-            String argument = clientRequest.getCommandArguments();
-            Serializable objectArgument = clientRequest.getObjectArgument();
-            if (commandManager.getCommands().containsKey(inputCommand)) {
-                Command command = commandManager.getCommands().get(inputCommand);
-                try {
-                    response = command.execute(argument, objectArgument);
-                    commandManager.addToHistory(command);
-                    commandManager.getSaveCommand().execute("", null);
-                } catch (NoSuchCommandException | IllegalValueException e) {
-                    response = new ServerResponse(e.getMessage(), ExecuteCode.ERROR);
-                } catch (CSVException e) {
-                    response = new ServerResponse("Error during converting data to file", ExecuteCode.ERROR);
-                }
+            User user = new User(clientRequest.getUsername(), PasswordEncoder.encode(clientRequest.getPassword()));
+            if (usersHandler.checkUser(user)) {
+                return executor.executeCommand(clientRequest.getCommandName(), clientRequest.getCommandArguments(),
+                        clientRequest.getObjectArgument(), user.getUsername());
             } else {
-                response = new ServerResponse("Unknown command detected: " + inputCommand, ExecuteCode.ERROR);
+                return new ServerResponse("commands can only be executed by authorized users", ExecuteCode.ERROR);
             }
         }
-        byte[] bytesSending = Serializer.serialize(response);
-        DatagramPacket packet = new DatagramPacket(bytesSending, bytesSending.length, client, port);
-        server.send(packet);
-        logger.info("response sent to the address " + client + ", port " + port);
+    }
+
+    private boolean sendResponse(Object response, InetAddress client, int port) {
+        try {
+            byte[] bytesSending = Serializer.serialize(response);
+            DatagramPacket packet = new DatagramPacket(bytesSending, bytesSending.length, client, port);
+            server.send(packet);
+            logger.info("response sent to the address " + client + ", port " + port);
+        } catch (IOException e) {
+            logger.severe("error during sending response " + e.getMessage());
+        }
+        return true;
+    }
+
+    private ReceivedData receive() {
+        ReceivedData receivedData = null;
+        try {
+            byte[] bytesReceiving = new byte[bufferSize];
+            DatagramPacket request = new DatagramPacket(bytesReceiving, bytesReceiving.length);
+            server.receive(request);
+            Object received = Serializer.deserialize(bytesReceiving);
+            InetAddress client = request.getAddress();
+            int port = request.getPort();
+            receivedData = new ReceivedData(received, client, port);
+            logger.info(() -> "received request from address " + client + ", port " + port);
+        } catch (IOException | ClassNotFoundException e) {
+            logger.severe("error during reading response " + e.getMessage());
+        }
+        return receivedData;
     }
 }

@@ -80,9 +80,9 @@ public class PersonFiller {
         return new Location(fillLocationX(), fillLocationY(), fillLocationZ(), fillLocationName());
     }
 
-    public Person fillPerson() throws ScriptException {
+    public Person fillPerson(String ownerUserName) throws ScriptException {
         return new Person(fillName(), fillCoordinates(), fillHeight(), fillBirthday(),
-                fillPasswordId(), fillNationality(), fillLocation());
+                fillPasswordId(), fillNationality(), fillLocation(), ownerUserName);
     }
 
 }

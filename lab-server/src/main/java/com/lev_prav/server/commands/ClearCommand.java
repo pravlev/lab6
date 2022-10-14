@@ -1,12 +1,11 @@
 package com.lev_prav.server.commands;
 
 
-import com.lev_prav.common.exceptions.IllegalValueException;
 import com.lev_prav.common.exceptions.NoSuchCommandException;
-import com.lev_prav.common.util.CommandRequirement;
+import com.lev_prav.common.util.CommandObjectRequirement;
 import com.lev_prav.common.util.ExecuteCode;
 import com.lev_prav.common.util.ServerResponse;
-import com.lev_prav.server.util.CollectionManager;
+import com.lev_prav.server.collectionmanagers.CollectionManager;
 
 /**
  * Этот класс реализует команду Clear
@@ -15,16 +14,18 @@ public class ClearCommand extends Command {
     private final CollectionManager collectionManager;
 
     public ClearCommand(CollectionManager collectionManager) {
-        super("clear", "очистить коллекцию", CommandRequirement.NONE);
+        super("clear", "очистить коллекцию", CommandObjectRequirement.NONE, false);
         this.collectionManager = collectionManager;
     }
 
     @Override
-    public ServerResponse execute(String argument, Object object) throws NoSuchCommandException, IllegalValueException {
+    public ServerResponse execute(String argument, Object object, String username) throws NoSuchCommandException {
         if (!argument.isEmpty() || object != null) {
             throw new NoSuchCommandException();
         }
-        collectionManager.clear();
+        if (!collectionManager.clear(username)) {
+            return new ServerResponse("Cannot delete objects", ExecuteCode.SERVER_ERROR);
+        }
 
         return new ServerResponse(ExecuteCode.SUCCESS);
     }
